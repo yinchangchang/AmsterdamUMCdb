@@ -31,8 +31,8 @@ def merge_data():
             fs.append(file)
             ctime = 0
             for i_line, line in enumerate(open('feature/{:s}.csv'.format(file))):
-                if i_line > 20:
-                    break
+                # if i_line > 20:
+                #     break
                 if i_line == 0:
                     if line.strip() != 'admissionid,time,itemid,value':
                         break
@@ -55,27 +55,28 @@ def sort_data():
     df.to_csv('ast.csv')
 
 def merge_vaso_iv():
-    vaso = pd.read_csv('feature/vaso.csv')
-    wgs = vaso['weightgroup'].unique()
-    for wg in wgs:
-        if type(wg) is float:
-            print(wg)
-            continue
-        if wg == None or len(wg.strip()) == 0:
-            continue
-        elif '59-' == wg:
-            print(len(wg), len(wg.strip()), wg)
-            nwg = 55
-        elif '110+' == wg:
-            print(len(wg), len(wg.strip()), wg)
-            nwg = 115
-        else:
-            print(len(wg), len(wg.strip()), wg)
-            minw,maxw = wg.split('-')
-            nwg = int((int(minw) +  int(maxw) + 1)/2)
-        vaso.loc[(vaso['weightgroup']==wg), 'weightgroup'] = nwg
-    vaso['charttime'] = (vaso['charttime'] / 240).astype(int)
-    vaso.to_csv('tmp.csv')
+    df = pd.read_csv('ast.csv')
+    vaso = pd.read_csv('feature/vaso_dose.csv')
+    iv = pd.read_csv('feature/iv_dose.csv')
+    icuids = set(df['icustayid'].unique())
+    icuids_vaso = set(vaso['icustayid'].unique())
+    icuids_iv = set(iv['icustayid'].unique())
+    print('vaso', len(vaso))
+    for id in icuids_vaso - icuids:
+        vaso = vaso.drop(vaso['icustayid']==id)
+        print('vaso', len(vaso))
+    print('iv', len(iv))
+    for id in icuids_iv - icuids:
+        iv = iv.drop(iv['icustayid']==id)
+        print('iv', len(iv))
+
+    df = df.set_index(['icustayid','charttime']).join(vaso.set_index(['icustayid','charttime']), on=['icustayid', 'charttime'])
+    df = df.join(iv.set_index(['icustayid','charttime']), on=['icustayid', 'charttime'])
+    df.to_csv('ast.dose.csv')
+
+
+
+
 
 
 
