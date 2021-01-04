@@ -54,12 +54,37 @@ def sort_data():
     df = df.groupby(['icustayid', 'charttime']).mean()
     df.to_csv('ast.csv')
 
+def merge_vaso_iv():
+    vaso = pd.read_csv('feature/vaso.csv')
+    wgs = vaso['weightgroup'].unique()
+    for wg in wgs:
+        if type(wg) is float:
+            print(wg)
+            continue
+        if wg == None or len(wg.strip()) == 0:
+            continue
+        elif '59-' == wg:
+            print(len(wg), len(wg.strip()), wg)
+            nwg = 55
+        elif '110+' == wg:
+            print(len(wg), len(wg.strip()), wg)
+            nwg = 115
+        else:
+            print(len(wg), len(wg.strip()), wg)
+            minw,maxw = wg.split('-')
+            nwg = int((int(minw) +  int(maxw) + 1)/2)
+        vaso.loc[(vaso['weightgroup']==wg), 'weightgroup'] = nwg
+    vaso['charttime'] = (vaso['charttime'] / 240).astype(int)
+    vaso.to_csv('tmp.csv')
+
+
 
 def main():
     # generate_sofa()
     # generate_sirs()
-    merge_data()
-    sort_data()
+    # merge_data()
+    # sort_data()
+    merge_vaso_iv()
 
 
 
