@@ -137,10 +137,42 @@ def merge_demo():
     df.to_csv('ast.demo.csv')
 
 
+def merge_motrality():
+    df = pd.read_csv('ast.demo.csv')
+    sepsis = pd.read_csv('../concepts/diagnosis/sepsis.csv')
+    for id in tqdm(df['icustayid'].unique()):
+        line = sepsis.loc[sepsis['admissionid']==id]
+        readm = min(1, list(line['admissioncount'])[0] - 1)
+        assert readm in [0, 1]
+        df.loc[(df['icustayid']==id), 're_admission'] = readm
+        dod = list(line['dateofdeath'])[0]
+        dd = list(line['dischargedat'])[0]
+        ad = list(line['admittedat'])[0]
+        if str(dod) == 'nan':
+            # print(dod)
+            df.loc[(df['icustayid']==id), 'mortality_90d'] = 0
+            df.loc[(df['icustayid']==id), 'died_within_48h_of_out_time'] = 0
+            df.loc[(df['icustayid']==id), 'died_in_hosp'] = 0
+            df.loc[(df['icustayid']==id), 'delay_end_of_record_and_discharge_or_death'] = 0
+        else:
+            df.loc[(df['icustayid']==id), 'delay_end_of_record_and_discharge_or_death'] = 1
+            if dod - dd <= 90 * 24 * 60 * 60 * 1000:
+                df.loc[(df['icustayid']==id), 'mortality_90d'] = 1
+            else:
+                df.loc[(df['icustayid']==id), 'mortality_90d'] = 0
+            if dod - dd <= 48 * 60 * 60 * 1000:
+                df.loc[(df['icustayid']==id), 'died_within_48h_of_out_time'] = 1
+            else:
+                df.loc[(df['icustayid']==id), 'died_within_48h_of_out_time'] = 0
+            if dod <= dd:
+                df.loc[(df['icustayid']==id), 'died_in_hosp'] = 1
+            else:
+                df.loc[(df['icustayid']==id), 'died_in_hosp'] = 0
+    df.to_csv('ast.mort.csv')
 
 
 def check_null():
-    df = pd.read_csv('ast.demo.csv')
+    df = pd.read_csv('ast.mort.csv')
     print('Temp_C', df['Temp_C'].mean())
     n = 0
     m = 0
@@ -163,8 +195,9 @@ def main():
     # return
     # merge_data()
     # sort_data()
-    merge_vaso_iv()
-    merge_demo()
+    # merge_vaso_iv()
+    # merge_demo()
+    merge_motrality()
     check_null()
 
 
