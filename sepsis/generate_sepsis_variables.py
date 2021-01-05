@@ -118,6 +118,9 @@ def merge_vaso_iv():
     df['max_dose_vaso'] = df['vaso_dose']
     df['input_4hourly'] = df['iv_dose']
     df['output_4hourly'] = df['output_4h']
+    df.loc[np.isnan(df['max_dose_vaso']), 'max_dose_vaso'] = 0
+    df.loc[np.isnan(df['input_4hourly']), 'input_4hourly'] = 0
+    df.loc[np.isnan(df['output_4hourly']), 'output_4hourly'] = 0
     df.to_csv('ast.dose.csv')
 
 def merge_demo():
@@ -134,6 +137,9 @@ def merge_demo():
     df['age'] = df['age_']
     df['Weight_kg'] = df['Weight_kg_']
     df['gender'] = df['gender_']
+    df.loc[np.isnan(df['age']), 'age'] = df['age'].mean()
+    df.loc[np.isnan(df['Weight_kg']), 'Weight_kg'] = df['Weight_kg'].mean()
+    df.loc[np.isnan(df['gender']), 'gender'] = 0
     df.to_csv('ast.demo.csv')
 
 
@@ -168,16 +174,89 @@ def merge_motrality():
                 df.loc[(df['icustayid']==id), 'died_in_hosp'] = 1
             else:
                 df.loc[(df['icustayid']==id), 'died_in_hosp'] = 0
+
     df.to_csv('ast.mort.csv')
 
+def impute(data):
+    isnan = list(np.isnan(data))
+    data = list(data)
+    first, last = -1, 0
+    for i,d in enumerate(data):
+        if not isnan[i]:
+            if first<0:
+                first = i
+            last = i
+    if first >0:
+        for i in range(first):
+            data[i] = data[first]
+    if last < len(data) -1:
+        for i in range(last, len(data)):
+            data[i] = data[last]
+    isnan = np.isnan(data)
+    # print('new-------------', isnan)
+    start = 0
+    for i,d in enumerate(data):
+        if i>0 and isnan[i] and not isnan[i-1]:
+            # print('-----------',start)
+            start = i
+        if start > 0 and isnan[i] and not isnan[i+1]:
+            end = i
+            # print(start, end, len(data))
+            last_value = data[start - 1]
+            next_value = data[end + 1]
+            for j in range(end+1 - start):
+                d = last_value + (next_value - last_value) / (end + 2 - start) * (j + 1)
+                # print('----------------', start+j, d)
+                data[start + j] = d
+            start = len(data)
+    return data
 
-def check_null():
+def proc_missing():
     df = pd.read_csv('ast.mort.csv')
-    print('Temp_C', df['Temp_C'].mean())
+    cs = set()
+    for c in df.columns:
+        if len(set(np.isnan(df[c]))) > 1:
+            cs.add(c)
+    for id in tqdm(df['icustayid'].unique()):
+        for c in cs:
+            data = df.loc[(df['icustayid']==id), c]
+            if np.isnan(data).min():
+                print(c, list(data))
+                df.loc[(df['icustayid']==id), c] = df['icustayid'].mean()
+            elif np.isnan(data).max():
+                # print(list(data))
+                data = impute(data)
+                # print(data)
+                # print(df.loc[(df['icustayid']==id), pd.Index])
+                df.loc[(df['icustayid']==id), c] = data
+                data = df.loc[(df['icustayid']==id), c]
+                # print(list(data))
+                # input()
+                # return
+    for c in df.columns:
+        data = df[c].unique()
+        if len(set(np.isnan(data))) > 1:
+            print(c, set(np.isnan(data)), np.isnan(data).mean())
+        continue
+    df.to_csv('ast.miss.csv')
+
+
+def save():
+    df = pd.read_csv('ast.miss.csv')
+    head = '''bloc,icustayid,charttime,gender,age,re_admission,died_in_hosp,died_within_48h_of_out_time,mortality_90d,delay_end_of_record_and_discharge_or_death,Weight_kg,GCS,HR,SysBP,MeanBP,DiaBP,RR,SpO2,Temp_C,FiO2_1,Potassium,Sodium,Chloride,Glucose,Creatinine,Magnesium,Total_bili,Albumin,Hb,WBC_count,Platelets_count,Arterial_pH,paO2,Arterial_BE,Arterial_lactate,HCO3,PaO2_FiO2,max_dose_vaso,input_total,input_4hourly,output_total,output_4hourly'''
+    df.to_csv('ast.left.csv', columns=head.split(','))
+    print('feature', len(head.split(',')))
+
+
+def check_null(file):
+    df = pd.read_csv(file)
     n = 0
     m = 0
     for c in df.columns:
         data = df[c].unique()
+        if len(set(np.isnan(data))) == 1:
+            print(c, set(np.isnan(data)), np.isnan(data).mean())
+        continue
         if len(data) <2:
             print(c)
             n+=1
@@ -197,8 +276,12 @@ def main():
     # sort_data()
     # merge_vaso_iv()
     # merge_demo()
-    merge_motrality()
-    check_null()
+    # merge_motrality()
+    # proc_missing()
+    save()
+    # check_null('ast.mort.csv')
+    # check_null('ast.miss.csv')
+    check_null('ast.left.csv')
 
 
 
