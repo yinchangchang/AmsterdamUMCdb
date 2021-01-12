@@ -65,6 +65,7 @@ def merge_data():
     fs = []
     n_index = len(mimic_head.split(','))
     for file in tqdm(file_list.split(',')):
+        max_time = 0
         if file in mimic_head:
             value_index = mimic_head.split(',').index(file)
             fs.append(file)
@@ -79,11 +80,13 @@ def merge_data():
                         break
                 else:
                     admissionid,time,itemid,value = line.strip().split(',')
+                    max_time = max(max_time, float(time))
                     new_line = ['1', admissionid, time] + ['' for _ in range(value_index - 3)] + [value]+ ['' for _ in range(n_index - value_index - 1)]
                     # print(n_index, len(new_line))
                     wf.write('\n' + ','.join(new_line))
         else:
             print(file)
+        print(file, 'max_time', max_time)
     # print(len(fs))
     wf.close()
 
@@ -271,13 +274,13 @@ def main():
     # generate_sofa()
     # generate_sirs()
     # generate_files()
-    # return
     # merge_data()
-    # sort_data()
-    # merge_vaso_iv()
-    # merge_demo()
-    # merge_motrality()
-    # proc_missing()
+    # return
+    sort_data()
+    merge_vaso_iv()
+    merge_demo()
+    merge_motrality()
+    proc_missing()
     save()
     # check_null('ast.mort.csv')
     # check_null('ast.miss.csv')
