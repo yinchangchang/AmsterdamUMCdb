@@ -273,9 +273,8 @@ def check_null(file):
 def main():
     # generate_sofa()
     # generate_sirs()
-    # generate_files()
-    # merge_data()
-    # return
+    generate_files()
+    merge_data()
     sort_data()
     merge_vaso_iv()
     merge_demo()
